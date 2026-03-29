@@ -1,0 +1,10 @@
+services:
+  kape-parser:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./downloaded:/app/downloaded
+      - ./temporary_processing:/app/temporary_processing
+      - ./result:/app/result
+    restart: unless-stopped

@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kape Parser</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #1e1e2e;
+            color: #cdd6f4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 30px;
+            color: #cba6f7;
+        }
+
+        #drop-zone {
+            width: 100%;
+            max-width: 600px;
+            border: 2px dashed #6c7086;
+            border-radius: 12px;
+            padding: 60px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+            background: #313244;
+        }
+
+        #drop-zone.dragover {
+            border-color: #cba6f7;
+            background: #3d3f5e;
+        }
+
+        #drop-zone p {
+            font-size: 1.1rem;
+            color: #a6adc8;
+        }
+
+        #browse-label {
+            color: #89b4fa;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        #help-text {
+            margin-top: 16px;
+            max-width: 600px;
+            width: 100%;
+            color: #a6adc8;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        #file-list {
+            width: 100%;
+            max-width: 600px;
+            margin-top: 20px;
+        }
+
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #313244;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .file-item {
+            flex-wrap: wrap;
+        }
+
+        .file-item .name { color: #cdd6f4; }
+        .file-item .size { color: #6c7086; font-size: 0.8rem; }
+
+        .remove-btn {
+            background: none;
+            border: none;
+            color: #f38ba8;
+            cursor: pointer;
+            font-size: 1.1rem;
+            padding: 0 4px;
+        }
+
+        .progress-wrap {
+            width: 100%;
+            margin-top: 8px;
+            background: #45475a;
+            border-radius: 4px;
+            height: 8px;
+            overflow: hidden;
+            display: none;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: #a6e3a1;
+            border-radius: 4px;
+            transition: width 0.1s ease;
+        }
+
+        .progress-bar.done  { background: #a6e3a1; }
+        .progress-bar.error { background: #f38ba8; }
+
+        #process-btn {
+            margin-top: 24px;
+            padding: 12px 40px;
+            font-size: 1rem;
+            background: #cba6f7;
+            color: #1e1e2e;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        #process-btn:hover { background: #b4befe; }
+        #process-btn:disabled { background: #6c7086; cursor: not-allowed; }
+
+        #status {
+            margin-top: 20px;
+            max-width: 600px;
+            width: 100%;
+            font-size: 0.95rem;
+        }
+
+        .msg-success { color: #a6e3a1; }
+        .msg-error   { color: #f38ba8; }
+
+        #lock-banner {
+            width: 100%;
+            max-width: 600px;
+            background: #45475a;
+            border: 2px solid #fab387;
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        #lock-banner p:first-child {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #fab387;
+            margin-bottom: 8px;
+        }
+
+        #lock-banner p:last-child {
+            font-size: 0.9rem;
+            color: #a6adc8;
+        }
+
+        #log-window {
+            width: 100%;
+            max-width: 600px;
+            background: #11111b;
+            border: 1px solid #45475a;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        #log-titlebar {
+            background: #313244;
+            padding: 6px 14px;
+            font-size: 0.8rem;
+            color: #6c7086;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #log-titlebar::before {
+            content: "";
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #fab387;
+            border-radius: 50%;
+            animation: blink 1.2s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.2; }
+        }
+
+        #log-output {
+            padding: 12px 14px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.82rem;
+            line-height: 1.5;
+            color: #a6e3a1;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        #result-section {
+            width: 100%;
+            max-width: 600px;
+            margin-top: 40px;
+        }
+
+        #result-section h2 {
+            font-size: 1.1rem;
+            color: #cba6f7;
+            margin-bottom: 12px;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #313244;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .result-item a {
+            color: #89b4fa;
+            text-decoration: none;
+        }
+
+        .result-item a:hover {
+            text-decoration: underline;
+        }
+
+        .result-item .size {
+            color: #6c7086;
+            font-size: 0.8rem;
+        }
+
+        .no-results {
+            color: #6c7086;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Kape Parser</h1>
+
+<p id="help-text">Ladda upp alla .zip-filer du samlat in med Kape.</p>
+<p id="help-text">(Den här sidan är ett test)</p>
+<p id="help-text">&nbsp;</p>
+
+{% if locked %}
+<div id="lock-banner">
+    <p>Kape jobbar, du får vänta.</p>
+    <p>Jobbet startade för {{ lock_age }} sedan.</p>
+</div>
+<div id="log-window">
+    <div id="log-titlebar">temporary_processing/run.log</div>
+    <div id="log-output"></div>
+</div>
+{% else %}
+<div id="drop-zone">
+    <p>Drag &amp; drop ZIP files here<br>or <label id="browse-label" for="file-input">browse files</label></p>
+    <input type="file" id="file-input" multiple accept=".zip">
+</div>
+
+<div id="file-list"></div>
+
+<button id="process-btn" disabled>Process</button>
+
+<div id="status"></div>
+{% endif %}
+
+<div id="result-section">
+    <h2>Resultat</h2>
+    {% if result_files %}
+        {% for f in result_files %}
+        <div class="result-item">
+            <a href="/result/{{ f.name }}" download>{{ f.name }}</a>
+            <span class="size">{{ (f.size / 1024 / 1024) | round(1) }} MB</span>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p class="no-results">Inga resultatfiler ännu.</p>
+    {% endif %}
+</div>
+
+<script>
+    const dropZone   = document.getElementById("drop-zone");
+    const fileInput  = document.getElementById("file-input");
+    const fileList   = document.getElementById("file-list");
+    const processBtn = document.getElementById("process-btn");
+    const status     = document.getElementById("status");
+
+    let selectedFiles = [];
+
+    function formatSize(bytes) {
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+        return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+    }
+
+    function renderFileList() {
+        fileList.innerHTML = "";
+        selectedFiles.forEach((file, i) => {
+            const item = document.createElement("div");
+            item.className = "file-item";
+            item.id = `file-item-${i}`;
+            item.innerHTML = `
+                <span class="name">${file.name}</span>
+                <span class="size">${formatSize(file.size)}</span>
+                <button class="remove-btn" onclick="removeFile(${i})">&#x2715;</button>
+                <div class="progress-wrap" id="progress-wrap-${i}">
+                    <div class="progress-bar" id="progress-bar-${i}"></div>
+                </div>
+            `;
+            fileList.appendChild(item);
+        });
+        processBtn.disabled = selectedFiles.length === 0;
+    }
+
+    function addFiles(files) {
+        for (const file of files) {
+            if (file.name.endsWith(".zip") && !selectedFiles.find(f => f.name === file.name)) {
+                selectedFiles.push(file);
+            }
+        }
+        renderFileList();
+    }
+
+    function removeFile(index) {
+        selectedFiles.splice(index, 1);
+        renderFileList();
+    }
+
+    dropZone.addEventListener("dragover", e => {
+        e.preventDefault();
+        dropZone.classList.add("dragover");
+    });
+
+    dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+
+    dropZone.addEventListener("drop", e => {
+        e.preventDefault();
+        dropZone.classList.remove("dragover");
+        addFiles(e.dataTransfer.files);
+    });
+
+    fileInput.addEventListener("change", () => {
+        addFiles(fileInput.files);
+        fileInput.value = "";
+    });
+
+    function uploadFile(file, index) {
+        return new Promise((resolve) => {
+            const wrap = document.getElementById(`progress-wrap-${index}`);
+            const bar  = document.getElementById(`progress-bar-${index}`);
+            wrap.style.display = "block";
+
+            const formData = new FormData();
+            formData.append("files", file);
+
+            const xhr = new XMLHttpRequest();
+
+            xhr.upload.addEventListener("progress", e => {
+                if (e.lengthComputable) {
+                    bar.style.width = Math.round((e.loaded / e.total) * 100) + "%";
+                }
+            });
+
+            xhr.addEventListener("load", () => {
+                bar.style.width = "100%";
+                try {
+                    const result = JSON.parse(xhr.responseText);
+                    if (result.saved && result.saved.length > 0) {
+                        bar.classList.add("done");
+                        resolve({ ok: true, name: file.name });
+                    } else {
+                        bar.classList.add("error");
+                        resolve({ ok: false, name: file.name });
+                    }
+                } catch {
+                    bar.classList.add("error");
+                    resolve({ ok: false, name: file.name });
+                }
+            });
+
+            xhr.addEventListener("error", () => {
+                bar.classList.add("error");
+                resolve({ ok: false, name: file.name });
+            });
+
+            xhr.open("POST", "/upload");
+            xhr.send(formData);
+        });
+    }
+
+    processBtn.addEventListener("click", async () => {
+        if (selectedFiles.length === 0) return;
+
+        processBtn.disabled = true;
+        status.innerHTML = "";
+
+        const results = [];
+        for (let i = 0; i < selectedFiles.length; i++) {
+            results.push(await uploadFile(selectedFiles[i], i));
+        }
+
+        const saved  = results.filter(r => r.ok).map(r => r.name);
+        const failed = results.filter(r => !r.ok).map(r => r.name);
+
+        let html = "";
+        if (saved.length)  html += `<p class="msg-success">Saved: ${saved.join(", ")}</p>`;
+        if (failed.length) html += `<p class="msg-error">Failed: ${failed.join(", ")}</p>`;
+        status.innerHTML = html;
+
+        if (saved.length > 0) {
+            try {
+                const resp = await fetch("/process", { method: "POST" });
+                const res = await resp.json();
+                if (res.started) {
+                    status.innerHTML += `<p class="msg-success">Processing started.</p>`;
+                } else {
+                    status.innerHTML += `<p class="msg-error">Could not start processing: ${res.error}</p>`;
+                }
+            } catch (err) {
+                status.innerHTML += `<p class="msg-error">Could not start processing: ${err.message}</p>`;
+            }
+
+            setTimeout(() => {
+                selectedFiles = [];
+                renderFileList();
+                status.innerHTML = "";
+            }, 3000);
+        } else {
+            processBtn.disabled = false;
+        }
+    });
+</script>
+
+{% if locked %}
+<script>
+    const logOutput = document.getElementById("log-output");
+    const es = new EventSource("/log/stream");
+
+    es.onmessage = (e) => {
+        const line = document.createElement("div");
+        line.textContent = e.data;
+        logOutput.appendChild(line);
+        logOutput.scrollTop = logOutput.scrollHeight;
+    };
+
+    es.addEventListener("done", () => {
+        es.close();
+        // Reload page so the upload form appears and results refresh
+        window.location.reload();
+    });
+</script>
+{% endif %}
+
+</body>
+</html>
