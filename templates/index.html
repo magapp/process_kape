@@ -4,106 +4,144 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kape Parser</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            font-family: Arial, sans-serif;
-            background: #1e1e2e;
-            color: #cdd6f4;
+            font-family: "Inter", sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
-            min-height: 100vh;
-            padding: 40px 20px;
+            padding: 0 0 60px;
         }
 
-        h1 {
-            font-size: 2rem;
-            margin-bottom: 30px;
-            color: #cba6f7;
+        header {
+            width: 100%;
+            padding: 28px 40px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            margin-bottom: 36px;
+        }
+
+        header h1 {
+            font-size: 2.4rem;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: -0.02em;
+            text-shadow: 0 2px 12px rgba(0,0,0,0.18);
+        }
+
+        .subtitle {
+            color: rgba(255,255,255,0.8);
+            font-size: 0.95rem;
+            margin-top: 8px;
+            line-height: 1.6;
+        }
+
+        .page-content {
+            width: 100%;
+            max-width: 860px;
+            padding: 0 24px;
+        }
+
+        .card {
+            background: rgba(255,255,255,0.97);
+            border-radius: 20px;
+            padding: 32px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .card-title {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #a78bfa;
+            margin-bottom: 16px;
         }
 
         #drop-zone {
-            width: 100%;
-            max-width: 600px;
-            border: 2px dashed #6c7086;
-            border-radius: 12px;
-            padding: 60px 20px;
+            border: 2.5px dashed #c4b5fd;
+            border-radius: 14px;
+            padding: 52px 20px;
             text-align: center;
             cursor: pointer;
-            transition: border-color 0.2s, background 0.2s;
-            background: #313244;
+            transition: all 0.2s ease;
+            background: #faf5ff;
+            position: relative;
         }
 
         #drop-zone.dragover {
-            border-color: #cba6f7;
-            background: #3d3f5e;
+            border-color: #7c3aed;
+            background: #ede9fe;
         }
 
         #drop-zone p {
-            font-size: 1.1rem;
-            color: #a6adc8;
+            font-size: 1rem;
+            color: #7c6f9a;
+            pointer-events: none;
+        }
+
+        #drop-zone .drop-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            pointer-events: none;
+            display: block;
         }
 
         #browse-label {
-            color: #89b4fa;
+            color: #7c3aed;
+            font-weight: 600;
             text-decoration: underline;
             cursor: pointer;
+            pointer-events: auto;
         }
 
-        #help-text {
-            margin-top: 16px;
-            max-width: 600px;
-            width: 100%;
-            color: #a6adc8;
-            font-size: 0.9rem;
-            text-align: center;
-        }
+        #file-input { display: none; }
 
-        #file-input {
-            display: none;
-        }
-
-        #file-list {
-            width: 100%;
-            max-width: 600px;
-            margin-top: 20px;
-        }
+        #file-list { margin-top: 16px; }
 
         .file-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: #313244;
-            border-radius: 8px;
+            flex-wrap: wrap;
+            background: #faf5ff;
+            border: 1px solid #e9d5ff;
+            border-radius: 10px;
             padding: 10px 14px;
             margin-bottom: 8px;
             font-size: 0.9rem;
+            transition: background 0.15s;
         }
 
-        .file-item {
-            flex-wrap: wrap;
-        }
-
-        .file-item .name { color: #cdd6f4; }
-        .file-item .size { color: #6c7086; font-size: 0.8rem; }
+        .file-item .name { color: #3b0764; font-weight: 500; }
+        .file-item .size { color: #a78bfa; font-size: 0.8rem; }
 
         .remove-btn {
             background: none;
             border: none;
-            color: #f38ba8;
+            color: #f43f5e;
             cursor: pointer;
-            font-size: 1.1rem;
+            font-size: 1rem;
             padding: 0 4px;
+            transition: color 0.15s;
         }
+
+        .remove-btn:hover { color: #be123c; }
 
         .progress-wrap {
             width: 100%;
             margin-top: 8px;
-            background: #45475a;
-            border-radius: 4px;
-            height: 8px;
+            background: #e9d5ff;
+            border-radius: 99px;
+            height: 6px;
             overflow: hidden;
             display: none;
         }
@@ -111,196 +149,224 @@
         .progress-bar {
             height: 100%;
             width: 0%;
-            background: #a6e3a1;
-            border-radius: 4px;
+            background: linear-gradient(90deg, #7c3aed, #a78bfa);
+            border-radius: 99px;
             transition: width 0.1s ease;
         }
 
-        .progress-bar.done  { background: #a6e3a1; }
-        .progress-bar.error { background: #f38ba8; }
+        .progress-bar.done  { background: linear-gradient(90deg, #059669, #34d399); }
+        .progress-bar.error { background: linear-gradient(90deg, #dc2626, #f87171); }
 
         #process-btn {
-            margin-top: 24px;
-            padding: 12px 40px;
+            margin-top: 22px;
+            padding: 13px 40px;
             font-size: 1rem;
-            background: #cba6f7;
-            color: #1e1e2e;
+            background: linear-gradient(135deg, #7c3aed, #6d28d9);
+            color: #ffffff;
             border: none;
-            border-radius: 8px;
+            border-radius: 99px;
             cursor: pointer;
-            font-weight: bold;
-            transition: background 0.2s;
+            font-weight: 600;
+            font-family: "Inter", sans-serif;
+            letter-spacing: 0.01em;
+            box-shadow: 0 4px 14px rgba(124,58,237,0.4);
+            transition: all 0.2s ease;
         }
 
-        #process-btn:hover { background: #b4befe; }
-        #process-btn:disabled { background: #6c7086; cursor: not-allowed; }
+        #process-btn:hover    { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(124,58,237,0.5); }
+        #process-btn:disabled { background: linear-gradient(135deg, #cbd5e1, #94a3b8); box-shadow: none; cursor: not-allowed; transform: none; }
 
         #status {
-            margin-top: 20px;
-            max-width: 600px;
-            width: 100%;
-            font-size: 0.95rem;
+            margin-top: 16px;
+            font-size: 0.9rem;
         }
 
-        .msg-success { color: #a6e3a1; }
-        .msg-error   { color: #f38ba8; }
+        .msg-success { color: #059669; font-weight: 500; }
+        .msg-error   { color: #dc2626; font-weight: 500; }
 
         #lock-banner {
-            width: 100%;
-            max-width: 600px;
-            background: #45475a;
-            border: 2px solid #fab387;
-            border-radius: 12px;
-            padding: 24px;
-            text-align: center;
+            background: linear-gradient(135deg, #fff7ed, #ffedd5);
+            border: 1.5px solid #fed7aa;
+            border-radius: 14px;
+            padding: 20px 24px;
             margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
         }
 
-        #lock-banner p:first-child {
-            font-size: 1.3rem;
-            font-weight: bold;
-            color: #fab387;
-            margin-bottom: 8px;
+        #lock-banner .lock-icon {
+            font-size: 2rem;
+            flex-shrink: 0;
         }
 
-        #lock-banner p:last-child {
-            font-size: 0.9rem;
-            color: #a6adc8;
+        #lock-banner p:first-of-type {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #c2410c;
+            margin-bottom: 3px;
+        }
+
+        #lock-banner p:last-of-type {
+            font-size: 0.85rem;
+            color: #9a3412;
         }
 
         #log-window {
-            width: 100%;
-            max-width: 600px;
-            background: #11111b;
-            border: 1px solid #45475a;
-            border-radius: 8px;
+            border-radius: 14px;
             overflow: hidden;
             margin-bottom: 20px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
         }
 
         #log-titlebar {
-            background: #313244;
-            padding: 6px 14px;
-            font-size: 0.8rem;
-            color: #6c7086;
+            background: linear-gradient(90deg, #1e1b4b, #312e81);
+            padding: 10px 16px;
+            font-size: 0.78rem;
+            color: #a5b4fc;
+            font-family: monospace;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
         }
 
         #log-titlebar::before {
             content: "";
             display: inline-block;
-            width: 8px;
-            height: 8px;
-            background: #fab387;
+            width: 9px;
+            height: 9px;
+            background: #f97316;
             border-radius: 50%;
             animation: blink 1.2s ease-in-out infinite;
+            box-shadow: 0 0 6px #f97316;
         }
 
         @keyframes blink {
             0%, 100% { opacity: 1; }
-            50%       { opacity: 0.2; }
+            50%       { opacity: 0.15; }
         }
 
         #log-output {
-            padding: 12px 14px;
-            height: 300px;
+            padding: 16px 18px;
+            height: 340px;
             overflow-y: auto;
-            font-family: monospace;
+            font-family: "Consolas", "Courier New", monospace;
             font-size: 0.82rem;
-            line-height: 1.5;
-            color: #a6e3a1;
+            line-height: 1.6;
+            color: #c4b5fd;
+            background: #0f0a1e;
             white-space: pre-wrap;
             word-break: break-all;
         }
 
-        #result-section {
-            width: 100%;
-            max-width: 600px;
-            margin-top: 40px;
-        }
+        #result-section { }
 
         #result-section h2 {
-            font-size: 1.1rem;
-            color: #cba6f7;
-            margin-bottom: 12px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #a78bfa;
+            margin-bottom: 16px;
         }
 
         .result-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: #313244;
-            border-radius: 8px;
-            padding: 10px 14px;
-            margin-bottom: 8px;
+            background: #faf5ff;
+            border: 1px solid #e9d5ff;
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin-bottom: 10px;
             font-size: 0.9rem;
+            transition: background 0.15s, transform 0.15s;
         }
+
+        .result-item:hover { background: #f3e8ff; transform: translateX(3px); }
 
         .result-item a {
-            color: #89b4fa;
+            color: #7c3aed;
             text-decoration: none;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        .result-item a:hover {
-            text-decoration: underline;
-        }
+        .result-item a::before { content: "↓"; font-size: 1rem; }
 
-        .result-item .size {
-            color: #6c7086;
-            font-size: 0.8rem;
-        }
+        .result-item a:hover { text-decoration: underline; }
+
+        .result-item .size { color: #a78bfa; font-size: 0.8rem; }
 
         .no-results {
-            color: #6c7086;
+            color: #a78bfa;
             font-size: 0.9rem;
+            text-align: center;
+            padding: 16px 0;
         }
     </style>
 </head>
 <body>
 
-<h1>Kape Parser</h1>
+<header>
+    <h1>Kape Parser</h1>
+    <p class="subtitle">
+        Ladda upp alla .zip-filer du samlat in med Kape.<br>
+        (Den här sidan är ett test)
+    </p>
+</header>
 
-<p id="help-text">Ladda upp alla .zip-filer du samlat in med Kape.</p>
-<p id="help-text">(Den här sidan är ett test)</p>
-<p id="help-text">&nbsp;</p>
+<div class="page-content">
 
 {% if locked %}
 <div id="lock-banner">
-    <p>Kape jobbar, du får vänta.</p>
-    <p>Jobbet startade för {{ lock_age }} sedan.</p>
+    <span class="lock-icon">⚙️</span>
+    <div>
+        <p>Kape jobbar, du får vänta.</p>
+        <p>Jobbet startade klockan {{ lock_age }}.</p>
+    </div>
 </div>
 <div id="log-window">
     <div id="log-titlebar">temporary_processing/run.log</div>
     <div id="log-output"></div>
 </div>
 {% else %}
-<div id="drop-zone">
-    <p>Drag &amp; drop ZIP files here<br>or <label id="browse-label" for="file-input">browse files</label></p>
-    <input type="file" id="file-input" multiple accept=".zip">
+<div class="card">
+    <div class="card-title">Ladda upp filer</div>
+    <div id="drop-zone"
+         ondragenter="event.preventDefault(); this.classList.add('dragover')"
+         ondragover="event.preventDefault(); event.dataTransfer.dropEffect='copy'; this.classList.add('dragover')"
+         ondragleave="if(!this.contains(event.relatedTarget)) this.classList.remove('dragover')"
+         ondrop="event.preventDefault(); this.classList.remove('dragover'); addFiles(event.dataTransfer.files)">
+        <span class="drop-icon">📦</span>
+        <p>Släpp ZIP-filer här<br>eller <label id="browse-label" for="file-input">välj filer</label></p>
+        <input type="file" id="file-input" multiple accept=".zip">
+    </div>
+    <div id="file-list"></div>
+    <button id="process-btn" disabled>Kör Kape</button>
+    <div id="status"></div>
 </div>
-
-<div id="file-list"></div>
-
-<button id="process-btn" disabled>Process</button>
-
-<div id="status"></div>
 {% endif %}
 
-<div id="result-section">
-    <h2>Resultat</h2>
-    {% if result_files %}
-        {% for f in result_files %}
-        <div class="result-item">
-            <a href="/result/{{ f.name }}" download>{{ f.name }}</a>
-            <span class="size">{{ (f.size / 1024 / 1024) | round(1) }} MB</span>
-        </div>
-        {% endfor %}
-    {% else %}
-        <p class="no-results">Inga resultatfiler ännu.</p>
-    {% endif %}
+<div class="card">
+    <div id="result-section">
+        <h2>Resultat</h2>
+        {% if result_files %}
+            {% for f in result_files %}
+            <div class="result-item">
+                <a href="/result/{{ f.name }}" download>{{ f.name }}</a>
+                <span class="size">{{ (f.size / 1024 / 1024) | round(1) }} MB</span>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="no-results">Inga resultatfiler ännu.</p>
+        {% endif %}
+    </div>
 </div>
+
+</div><!-- end page-content -->
 
 <script>
     const dropZone   = document.getElementById("drop-zone");
@@ -308,6 +374,8 @@
     const fileList   = document.getElementById("file-list");
     const processBtn = document.getElementById("process-btn");
     const status     = document.getElementById("status");
+
+
 
     let selectedFiles = [];
 
@@ -338,7 +406,7 @@
 
     function addFiles(files) {
         for (const file of files) {
-            if (file.name.endsWith(".zip") && !selectedFiles.find(f => f.name === file.name)) {
+            if (file.name.toLowerCase().endsWith(".zip") && !selectedFiles.find(f => f.name === file.name)) {
                 selectedFiles.push(file);
             }
         }
@@ -350,18 +418,11 @@
         renderFileList();
     }
 
-    dropZone.addEventListener("dragover", e => {
-        e.preventDefault();
-        dropZone.classList.add("dragover");
-    });
+    // Prevent Firefox from navigating to file when dropped outside drop zone
+    document.addEventListener("dragover", e => e.preventDefault());
+    document.addEventListener("drop",     e => e.preventDefault());
 
-    dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
-
-    dropZone.addEventListener("drop", e => {
-        e.preventDefault();
-        dropZone.classList.remove("dragover");
-        addFiles(e.dataTransfer.files);
-    });
+    if (dropZone) {
 
     fileInput.addEventListener("change", () => {
         addFiles(fileInput.files);
@@ -436,23 +497,21 @@
                 const resp = await fetch("/process", { method: "POST" });
                 const res = await resp.json();
                 if (res.started) {
-                    status.innerHTML += `<p class="msg-success">Processing started.</p>`;
+                    status.innerHTML += `<p class="msg-success">Processing started, laddar om...</p>`;
+                    setTimeout(() => window.location.reload(), 1500);
                 } else {
                     status.innerHTML += `<p class="msg-error">Could not start processing: ${res.error}</p>`;
+                    processBtn.disabled = false;
                 }
             } catch (err) {
                 status.innerHTML += `<p class="msg-error">Could not start processing: ${err.message}</p>`;
+                processBtn.disabled = false;
             }
-
-            setTimeout(() => {
-                selectedFiles = [];
-                renderFileList();
-                status.innerHTML = "";
-            }, 3000);
         } else {
             processBtn.disabled = false;
         }
     });
+    } // end if (dropZone)
 </script>
 
 {% if locked %}

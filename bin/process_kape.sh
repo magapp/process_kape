@@ -60,6 +60,8 @@ echo "- Script running with PID $$"
 echo "*** Step 1 - Unzip all collected Kape files ***"
 for file in "$input_directory"/*; 
 do
+    [[ "${file##*.}" != "zip" ]] && continue
+
     if [ -f "$file" ]; then
         extract_dir="$process_directory/$(basename $file .zip)"
 
@@ -74,6 +76,8 @@ echo "*** Step 2 - Kape processing artifacts ***"
 
 for file in "$input_directory"/*; 
 do
+    [[ "${file##*.}" != "zip" ]] && continue
+
     if [ -f "$file" ]; then
         extract_dir="$process_directory/$(basename $file .zip)"
         parsed_dir="$process_directory/$(basename $file .zip)_parsed"

@@ -1,6 +1,8 @@
 services:
   kape-parser:
     build: .
+    environment:
+      TZ: Europe/Stockholm
     ports:
       - "5000:5000"
     volumes:

@@ -23,16 +23,8 @@ def allowed_file(filename):
 def get_lock_info():
     if not os.path.exists(LOCK_FILE):
         return None
-    age_seconds = int(time.time() - os.path.getmtime(LOCK_FILE))
-    hours, remainder = divmod(age_seconds, 3600)
-    minutes, seconds = divmod(remainder, 60)
-    if hours > 0:
-        age_str = f"{hours}h {minutes}m {seconds}s"
-    elif minutes > 0:
-        age_str = f"{minutes}m {seconds}s"
-    else:
-        age_str = f"{seconds}s"
-    return age_str
+    start_time = time.localtime(os.path.getmtime(LOCK_FILE))
+    return time.strftime("%H:%M", start_time)
 
 
 def get_result_files():
@@ -89,15 +81,17 @@ def log_stream():
     def generate():
         with open(LOG_FILE, "a"):  # create if missing
             pass
-        with open(LOG_FILE, "r") as f:
-            f.seek(0, 2)  # start from end of file
+        # Send an initial ping so Firefox establishes the connection immediately
+        yield ": ping\n\n"
+        with open(LOG_FILE, "r", encoding="utf-8", errors="replace") as f:
+            # Read from beginning so content written before connect is not missed
             while os.path.exists(LOCK_FILE):
                 line = f.readline()
                 if line:
                     yield f"data: {line.rstrip()}\n\n"
                 else:
-                    time.sleep(0.5)
-            # drain any remaining lines after lock disappears
+                    time.sleep(0.3)
+            # Drain any remaining lines written after lock was removed
             for line in f:
                 yield f"data: {line.rstrip()}\n\n"
             yield "event: done\ndata: \n\n"
@@ -120,4 +114,4 @@ def process():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)
