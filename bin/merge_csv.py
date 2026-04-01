@@ -1,0 +1,98 @@
+#!bin/env/bin/python3
+"""
+merge_csv.py - Merges KAPE-parsed CSV files from multiple hosts into combined per-type CSV files.
+
+Usage:
+    python merge_csv.py --process-dir <directory>
+
+The process directory is expected to contain subdirectories named on the format
+<timestamp>_<hostname> (e.g. "2026-03-26T083935_SERVER2022"), each containing
+CSV files produced by KAPE. CSV files with the same name across subdirectories
+are merged into a single file in the process directory root.
+"""
+import argparse
+import csv
+from pathlib import Path
+
+import chardet
+from dateutil import parser as dateutil_parser
+
+# Column name keywords used to identify timestamp columns for normalization
+TIMESTAMP_KEYWORDS = {"time", "date", "timestamp", "created", "modified", "accessed"}
+
+
+def normalize_timestamp(value):
+    """Parse a timestamp string and return it formatted as yyyy-mm-dd HH:MM:SS.
+    Returns the original value unchanged if parsing fails."""
+    try:
+        return dateutil_parser.parse(value).strftime("%Y-%m-%d %H:%M:%S")
+    except (ValueError, TypeError):
+        return value
+
+
+def is_timestamp_column(name):
+    """Return True if the column name contains a timestamp-related keyword."""
+    return any(kw in name.lower() for kw in TIMESTAMP_KEYWORDS)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Merge CSV files")
+    parser.add_argument("--process-dir", required=True, help="Directory to process")
+    args = parser.parse_args()
+
+    process_dir = Path(args.process_dir)
+
+    # Collect all CSV files one level deep (one per host subdirectory)
+    csv_files = [
+        f
+        for subdir in process_dir.iterdir()
+        if subdir.is_dir()
+        for f in subdir.glob("*.csv")
+    ]
+
+    for f in csv_files:
+        # Subdirectory name format: <timestamp>_<hostname>
+        hostname = f.parent.name.split("_", 1)[1]
+        print(f"Merge: {f.parent.name}, hostname: {hostname}, file: {f.name}")
+
+        output_file = process_dir / f.name
+        file_exists = output_file.exists()
+
+        # Auto-detect encoding; fall back to latin-1 to handle any byte value
+        detected = chardet.detect(f.read_bytes())["encoding"]
+        encoding = detected if detected and detected.lower() != "ascii" else "latin-1"
+        with open(f, newline="", encoding=encoding) as src:
+            reader = csv.reader(src)
+            rows = list(reader)
+
+        if not rows:
+            continue
+
+        header, data_rows = rows[0], rows[1:]
+
+        # Identify which column indices contain timestamps
+        ts_indices = [i for i, col in enumerate(header) if is_timestamp_column(col)]
+
+        # Normalize all timestamp cells to a consistent format
+        normalized_rows = []
+        for row in data_rows:
+            row = list(row)
+            for i in ts_indices:
+                if i < len(row):
+                    row[i] = normalize_timestamp(row[i])
+            normalized_rows.append(row)
+        data_rows = normalized_rows
+
+        # Append hostname column to each row
+        data_rows = [row + [hostname] for row in data_rows]
+
+        # Append to the merged output file; write header only for new files
+        with open(output_file, "a", newline="", encoding="utf-8-sig") as dst:
+            writer = csv.writer(dst)
+            if not file_exists:
+                writer.writerow(header)
+            writer.writerows(data_rows)
+
+
+if __name__ == "__main__":
+    main()

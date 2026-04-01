@@ -43,9 +43,14 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+COPY bin/requirements.txt /app/bin/requirements.txt
+RUN python -m venv /app/bin/env \
+    && /app/bin/env/bin/pip install --no-cache-dir -r /app/bin/requirements.txt
+
 COPY . .
 
-RUN mkdir -p downloaded result temporary_processing
+RUN mkdir -p downloaded result temporary_processing \
+    && chmod +x /app/bin/build_timeline.py /app/bin/build_ip_lists.py /app/bin/merge_csv.py
 
 EXPOSE 5000
 

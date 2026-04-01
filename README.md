@@ -155,6 +155,69 @@ powershell -noni -File your_script.ps1 -Arg value
 
 ---
 
+## Running `process_kape.sh` manually
+
+Sometimes you want to trigger processing without going through the web UI — for example to rerun after changing a parse module, or to debug a specific ZIP file.
+
+### Prerequisites
+
+- The container must be running: `docker compose up -d`
+- One or more KAPE ZIP files must be present in `./downloaded/`
+
+### Run inside the container
+
+```bash
+docker exec -it kape-parser bash bin/process_kape.sh downloaded temporary_processing result
+```
+
+The script writes progress to `temporary_processing/run.log` and creates `temporary_processing/run.lock` while running.
+You can follow the log in another terminal:
+
+```bash
+tail -f temporary_processing/run.log
+```
+
+### Run interactively (useful for debugging)
+
+```bash
+docker exec -it kape-parser bash
+# inside the container:
+bash bin/process_kape.sh downloaded temporary_processing result
+```
+
+### What the script produces
+
+| Step | Script | Output |
+|---|---|---|
+| Extract + parse KAPE ZIPs | KAPE + PowerShell modules | CSV files per host in `temporary_processing/` |
+| Merge CSVs across hosts | `bin/merge_csv.py` | Merged CSVs in `temporary_processing/` |
+| Build timeline | `bin/build_timeline.py` | `Timeline.csv`, `Timeline.xlsx` |
+| Build IP lists | `bin/build_ip_lists.py` | `ip-addresses.txt`, `ip-addresses.csv`, `ip-addresses-timestamp.csv` |
+
+All output files end up in `result/` and are available for download from the web UI.
+
+### Running individual Python scripts manually
+
+The Python scripts require the virtualenv at `bin/env`. From inside the container:
+
+```bash
+bin/merge_csv.py      --process-dir temporary_processing
+bin/build_timeline.py --process-dir temporary_processing
+bin/build_ip_lists.py --process-dir temporary_processing
+```
+
+Or with explicit options:
+
+```bash
+bin/build_timeline.py \
+  --process-dir temporary_processing \
+  --csv-output  Timeline.csv \
+  --xlsx-output Timeline.xlsx \
+  --cutoff-days 365
+```
+
+---
+
 ## Volumes
 
 All three data directories are mounted from the host so data persists across container restarts
