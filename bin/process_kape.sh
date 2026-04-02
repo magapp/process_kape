@@ -79,7 +79,7 @@ trap "rm -f '$LOCK_FILE'" EXIT
 echo "- Script running with PID $$"
 
 # Temporary debug
-if false; then
+if true; then
 
 # Run each stage on each collected zip file:
 #
@@ -210,10 +210,10 @@ zip ${output_directory}/${title}.zip $process_directory/zip/* -j
     
 echo ""
 echo "- Clearing input_directory ..."
-#sudo rm -rf $input_directory/*
+sudo rm -rf $input_directory/*
 
 echo ""
 echo "- Clearing $process_directory ..."
-#sudo rm -rf $process_directory/*
+sudo rm -rf $process_directory/*
 
 exit 0
