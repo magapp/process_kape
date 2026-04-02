@@ -3,12 +3,14 @@
 input_directory="$1"                                                                                                                                                                  
 process_directory="$2"                                                                                                                                                                  
 output_directory="$3"                                                                                                                                                                  
+title="$4"
 
-if [ `whoami` == "root" ]; then
-    WINE="wine"
-else
-    WINE="sudo wine"
-fi
+#if [ `whoami` == "root" ]; then
+    #WINE="wine"
+#else
+    #WINE="sudo wine"
+#fi
+WINE="sudo wine"
 
 POWERSHELL="$WINE powershell -noni -c"
 KAPE="$WINE bin/kape/kape.exe"
@@ -31,7 +33,8 @@ fi
 # input_directory is typical "downloaded"
 # process_directory is a temporary dir, where unzip and processing will occur
 # output_directory is where downloadable result will be 
-USAGE="Usage: run.sh <input directory> <process_directory> <output directory>"
+# title is a name for the project
+USAGE="Usage: run.sh <input directory> <process_directory> <output directory> <title>"
 if [ ! -d "$input_directory" ]; then
 	echo $USAGE
         exit 1;
@@ -43,6 +46,11 @@ if [ ! -d "$process_directory" ]; then
 fi
 
 if [ ! -d "$output_directory" ]; then
+	echo $USAGE
+        exit 1;
+fi
+
+if [ -z "$title" ]; then
 	echo $USAGE
         exit 1;
 fi
@@ -70,6 +78,9 @@ trap "rm -f '$LOCK_FILE'" EXIT
 
 echo "- Script running with PID $$"
 
+# Temporary debug
+if false; then
+
 # Run each stage on each collected zip file:
 #
 for zip_file in "$input_directory"/*; 
@@ -86,16 +97,16 @@ do
 
     mkdir -p "${output_dir}"
 
+    echo ""
     echo "*********************************************************************"
     echo "*** Processing '$hostname'"
     echo "*********************************************************************"
     
-    # Temporary debug
-    if false; then
-
+    echo ""
     echo "*** Extracting  '$hostname' ***"
     unzip -q $zip_file -d $output_dir
 
+    echo ""
     echo "*** Parsing Kape artifact '$hostname' ***"
     $KAPE --msource $input_dir --mdest $output_dir --module \!EZParser
 
@@ -103,6 +114,7 @@ do
     # $KAPE --msource ${input_dir}/c/ --mdest $output_dir --module NirSoft_BrowsingHistoryView,RECmd_RegistryASEPs,RECmd_SoftwareASEP
     $KAPE --msource ${input_dir}/c/ --mdest $output_dir --module NirSoft_BrowsingHistoryView
 
+    echo ""
     echo "*** Parse parsed Kape results '$hostname' ..."
 
     if [ -d ${input_dir}/EventLogs  ]; then
@@ -135,9 +147,7 @@ do
       $POWERSHELL "$PARSE_MODULES_DIR/RegistryParser.ps1 -in ${input_dir}\\Registry -outputdir $output_dir -ComputerName $hostname"
     fi
 
-    # Temporary debug
-    fi
-  
+    echo ""
     echo "*** Parse raw Kape results '$hostname' ..."
 
     echo "- Launching module: ConsoleHost ..."
@@ -145,27 +155,65 @@ do
   
     echo "- Launching module: DefenderLogs ..."
     $POWERSHELL "$PARSE_MODULES_DIR/DefenderLogs.ps1 -in ${input_dir} -outputdir $output_dir -ComputerName $hostname"
-    echo MAGNUS $POWERSHELL "$PARSE_MODULES_DIR/DefenderLogs.ps1 -in ${input_dir} -outputdir $output_dir -ComputerName $hostname"
+    echo MAGNUS DEBUG $POWERSHELL "$PARSE_MODULES_DIR/DefenderLogs.ps1 -in ${input_dir} -outputdir $output_dir -ComputerName $hostname"
 
   fi
 done
 
+echo ""
 echo "*** Merging CSV files ..."
-bin/merge_csv.py --process-dir $output_dir
+echo MAGNUS DEBUG bin/merge_csv.py --process-dir $process_directory
+bin/merge_csv.py --process-dir $process_directory
 
+echo ""
 echo "*** Building timeline ..."
-bin/build_timeline.py --process-dir $output_dir
+bin/build_timeline.py --process-dir $process_directory
 
+echo ""
 echo "*** Building IP lists ..."
-bin/build_ip_lists.py --process-dir $output_dir
+bin/build_ip_lists.py --process-dir $process_directory
 
-echo "*** Collecting relevant data and copy to $output_directory ..."
-cp -v templates/README.txt $output_dir
+echo ""
+echo "*** Collecting relevant data and copy to $output_directory/zip"
+
+# Temporary debug
+fi
+#
+
+mkdir -p ${process_directory}/zip
+
+for zip_file in "$input_directory"/*; 
+do
+  # Ignore non zip files
+  [[ "${zip_file##*.}" != "zip" ]] && continue
+
+  hostname=$(basename "$zip_file" .zip | cut -d_ -f2)
+
+  echo "- Compressing ${process_directory}/$(basename $zip_file .zip)"/*.csv to ${hostname}.zip
+  echo MAGNUS DEBUG zip ${process_directory}/${hostname}.zip "${process_directory}/zip/$(basename $zip_file .zip)"/*.csv -j
+  zip ${process_directory}/zip/${hostname}.zip "${process_directory}/$(basename $zip_file .zip)"/*.csv -j
+done
+
+echo "- Organizing files"
+
+cp -v templates/README.txt $process_directory/zip
+cp -v $process_directory/Timeline.csv $process_directory/zip
+cp -v $process_directory/Timeline.xlsx $process_directory/zip
+cp -v $process_directory/ip-addresses-timestamp.csv $process_directory/zip
+mkdir -p $process_directory/zip/merged_csv
+cp -v $process_directory/*.csv $process_directory/zip/merged_csv
+
+
+echo "- Compressing ${output_directory}/${title}.zip"
+echo MAGNUS DEBUG zip ${output_directory}/${title}.zip $process_directory/zip/* -j
+zip ${output_directory}/${title}.zip $process_directory/zip/* -j
     
+echo ""
 echo "- Clearing input_directory ..."
-#rm -rf $input_directory/*
+#sudo rm -rf $input_directory/*
 
+echo ""
 echo "- Clearing $process_directory ..."
-#rm -rf $process_directory/*
+#sudo rm -rf $process_directory/*
 
 exit 0

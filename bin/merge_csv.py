@@ -26,7 +26,7 @@ def normalize_timestamp(value):
     Returns the original value unchanged if parsing fails."""
     try:
         return dateutil_parser.parse(value).strftime("%Y-%m-%d %H:%M:%S")
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, OverflowError):
         return value
 
 
@@ -52,7 +52,8 @@ def main():
 
     for f in csv_files:
         # Subdirectory name format: <timestamp>_<hostname>
-        hostname = f.parent.name.split("_", 1)[1]
+        parts = f.parent.name.split("_", 1)
+        hostname = parts[1] if len(parts) > 1 else parts[0]
         print(f"Merge: {f.parent.name}, hostname: {hostname}, file: {f.name}")
 
         output_file = process_dir / f.name

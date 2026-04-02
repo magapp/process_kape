@@ -4,144 +4,258 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kape Parser</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
+        :root {
+            --purple:  #8b5cf6;
+            --violet:  #7c3aed;
+            --pink:    #ec4899;
+            --cyan:    #22d3ee;
+            --green:   #10b981;
+            --red:     #ef4444;
+            --bg:      #0f0c1a;
+            --surface: rgba(255,255,255,0.06);
+            --border:  rgba(255,255,255,0.12);
+            --text:    #f1f0ff;
+            --muted:   rgba(255,255,255,0.5);
+        }
+
         body {
-            font-family: "Inter", sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: "Space Grotesk", sans-serif;
+            background: var(--bg);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 0 0 60px;
+            padding: 0 0 80px;
+            overflow-x: hidden;
+        }
+
+        /* ── animated background blobs ── */
+        body::before, body::after {
+            content: "";
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.25;
+            pointer-events: none;
+            z-index: 0;
+            animation: drift 14s ease-in-out infinite alternate;
+        }
+        body::before {
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, #8b5cf6, #3b0764);
+            top: -150px; left: -150px;
+        }
+        body::after {
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, #ec4899, #7c3aed);
+            bottom: -100px; right: -100px;
+            animation-delay: -7s;
+        }
+
+        @keyframes drift {
+            from { transform: translate(0, 0) scale(1); }
+            to   { transform: translate(60px, 40px) scale(1.1); }
         }
 
         header {
+            position: relative;
+            z-index: 1;
             width: 100%;
-            padding: 28px 40px 0;
+            padding: 52px 40px 0;
             display: flex;
             flex-direction: column;
             align-items: center;
             text-align: center;
-            margin-bottom: 36px;
+            margin-bottom: 40px;
         }
 
+        .logo-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(139,92,246,0.2);
+            border: 1px solid rgba(139,92,246,0.4);
+            border-radius: 99px;
+            padding: 6px 16px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #c4b5fd;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 18px;
+        }
+
+        .logo-badge::before { content: "🔍"; }
+
         header h1 {
-            font-size: 2.4rem;
+            font-size: 3rem;
             font-weight: 700;
-            color: #ffffff;
-            letter-spacing: -0.02em;
-            text-shadow: 0 2px 12px rgba(0,0,0,0.18);
+            color: #fff;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+            background: linear-gradient(135deg, #e0d7ff 0%, #c4b5fd 40%, #f9a8d4 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .subtitle {
-            color: rgba(255,255,255,0.8);
+            color: var(--muted);
             font-size: 0.95rem;
-            margin-top: 8px;
-            line-height: 1.6;
+            margin-top: 10px;
+            line-height: 1.7;
         }
 
         .page-content {
+            position: relative;
+            z-index: 1;
             width: 100%;
             max-width: 860px;
             padding: 0 24px;
         }
 
+        /* ── glassmorphism card ── */
         .card {
-            background: rgba(255,255,255,0.97);
-            border-radius: 20px;
+            background: var(--surface);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
             padding: 32px;
             margin-bottom: 20px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
+            box-shadow: 0 8px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
         }
 
         .card-title {
-            font-size: 0.72rem;
+            font-size: 0.7rem;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: #a78bfa;
-            margin-bottom: 16px;
+            letter-spacing: 0.12em;
+            color: #c4b5fd;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
+        .card-title::before {
+            content: "";
+            display: inline-block;
+            width: 12px; height: 3px;
+            background: linear-gradient(90deg, var(--purple), var(--pink));
+            border-radius: 2px;
+        }
+
+        /* ── drop zone ── */
         #drop-zone {
-            border: 2.5px dashed #c4b5fd;
-            border-radius: 14px;
-            padding: 52px 20px;
+            border: 2px dashed rgba(139,92,246,0.4);
+            border-radius: 18px;
+            padding: 56px 20px;
             text-align: center;
             cursor: pointer;
-            transition: all 0.2s ease;
-            background: #faf5ff;
+            transition: all 0.25s ease;
+            background: rgba(139,92,246,0.05);
             position: relative;
+            overflow: hidden;
         }
 
+        #drop-zone::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 50% 50%, rgba(139,92,246,0.15), transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        #drop-zone:hover::after, #drop-zone.dragover::after { opacity: 1; }
+
         #drop-zone.dragover {
-            border-color: #7c3aed;
-            background: #ede9fe;
+            border-color: var(--purple);
+            background: rgba(139,92,246,0.12);
+            transform: scale(1.01);
         }
 
         #drop-zone p {
-            font-size: 1rem;
-            color: #7c6f9a;
+            font-size: 0.95rem;
+            color: var(--muted);
             pointer-events: none;
+            position: relative;
+            z-index: 1;
         }
 
         #drop-zone .drop-icon {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
+            font-size: 3rem;
+            margin-bottom: 12px;
             pointer-events: none;
             display: block;
+            position: relative;
+            z-index: 1;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50%       { transform: translateY(-6px); }
         }
 
         #browse-label {
-            color: #7c3aed;
+            color: #c4b5fd;
             font-weight: 600;
-            text-decoration: underline;
+            text-decoration: none;
             cursor: pointer;
             pointer-events: auto;
+            border-bottom: 1px solid rgba(196,181,253,0.4);
+            transition: color 0.15s, border-color 0.15s;
         }
+
+        #browse-label:hover { color: #fff; border-color: #fff; }
 
         #file-input { display: none; }
 
-        #file-list { margin-top: 16px; }
+        #file-list { margin-top: 18px; }
 
         .file-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            background: #faf5ff;
-            border: 1px solid #e9d5ff;
-            border-radius: 10px;
+            background: rgba(139,92,246,0.08);
+            border: 1px solid rgba(139,92,246,0.2);
+            border-radius: 12px;
             padding: 10px 14px;
             margin-bottom: 8px;
-            font-size: 0.9rem;
-            transition: background 0.15s;
+            font-size: 0.88rem;
+            transition: background 0.15s, border-color 0.15s;
         }
 
-        .file-item .name { color: #3b0764; font-weight: 500; }
-        .file-item .size { color: #a78bfa; font-size: 0.8rem; }
+        .file-item:hover { background: rgba(139,92,246,0.14); border-color: rgba(139,92,246,0.4); }
+
+        .file-item .name { color: #e0d7ff; font-weight: 500; }
+        .file-item .size { color: #a78bfa; font-size: 0.78rem; }
 
         .remove-btn {
             background: none;
             border: none;
-            color: #f43f5e;
+            color: rgba(244,63,94,0.7);
             cursor: pointer;
             font-size: 1rem;
             padding: 0 4px;
             transition: color 0.15s;
         }
 
-        .remove-btn:hover { color: #be123c; }
+        .remove-btn:hover { color: #f43f5e; }
 
         .progress-wrap {
             width: 100%;
             margin-top: 8px;
-            background: #e9d5ff;
+            background: rgba(255,255,255,0.1);
             border-radius: 99px;
-            height: 6px;
+            height: 4px;
             overflow: hidden;
             display: none;
         }
@@ -149,144 +263,213 @@
         .progress-bar {
             height: 100%;
             width: 0%;
-            background: linear-gradient(90deg, #7c3aed, #a78bfa);
+            background: linear-gradient(90deg, var(--violet), var(--pink));
             border-radius: 99px;
-            transition: width 0.1s ease;
+            transition: width 0.15s ease;
+            box-shadow: 0 0 8px rgba(139,92,246,0.6);
         }
 
-        .progress-bar.done  { background: linear-gradient(90deg, #059669, #34d399); }
-        .progress-bar.error { background: linear-gradient(90deg, #dc2626, #f87171); }
+        .progress-bar.done  { background: linear-gradient(90deg, var(--green), #34d399); box-shadow: 0 0 8px rgba(16,185,129,0.5); }
+        .progress-bar.error { background: linear-gradient(90deg, var(--red), #f87171);   box-shadow: 0 0 8px rgba(239,68,68,0.5); }
 
-        #process-btn {
-            margin-top: 22px;
-            padding: 13px 40px;
+        /* ── case field ── */
+        .case-wrap { margin-top: 22px; }
+
+        .case-wrap label {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #c4b5fd;
+            margin-bottom: 8px;
+        }
+
+        .case-wrap input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1.5px solid rgba(139,92,246,0.3);
+            border-radius: 12px;
             font-size: 1rem;
-            background: linear-gradient(135deg, #7c3aed, #6d28d9);
-            color: #ffffff;
+            font-family: "Space Grotesk", sans-serif;
+            font-weight: 500;
+            color: #e0d7ff;
+            background: rgba(139,92,246,0.08);
+            outline: none;
+            transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+        }
+
+        .case-wrap input::placeholder { color: rgba(167,139,250,0.5); }
+        .case-wrap input:focus        { border-color: var(--purple); background: rgba(139,92,246,0.14); box-shadow: 0 0 0 3px rgba(139,92,246,0.2); }
+        .case-wrap input.valid        { border-color: var(--green);  box-shadow: 0 0 0 3px rgba(16,185,129,0.15); }
+        .case-wrap input.invalid      { border-color: var(--red);    box-shadow: 0 0 0 3px rgba(239,68,68,0.15); }
+
+        .case-hint {
+            margin-top: 7px;
+            font-size: 0.78rem;
+            color: rgba(167,139,250,0.7);
+        }
+
+        .case-hint.error { color: #fca5a5; }
+
+        /* ── process button ── */
+        #process-btn {
+            margin-top: 24px;
+            padding: 14px 44px;
+            font-size: 1rem;
+            background: linear-gradient(135deg, #8b5cf6, #ec4899);
+            color: #fff;
             border: none;
             border-radius: 99px;
             cursor: pointer;
-            font-weight: 600;
-            font-family: "Inter", sans-serif;
-            letter-spacing: 0.01em;
-            box-shadow: 0 4px 14px rgba(124,58,237,0.4);
-            transition: all 0.2s ease;
+            font-weight: 700;
+            font-family: "Space Grotesk", sans-serif;
+            letter-spacing: 0.02em;
+            box-shadow: 0 4px 20px rgba(139,92,246,0.5), 0 0 0 0 rgba(139,92,246,0);
+            transition: all 0.25s ease;
         }
 
-        #process-btn:hover    { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(124,58,237,0.5); }
-        #process-btn:disabled { background: linear-gradient(135deg, #cbd5e1, #94a3b8); box-shadow: none; cursor: not-allowed; transform: none; }
-
-        #status {
-            margin-top: 16px;
-            font-size: 0.9rem;
+        #process-btn:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 8px 28px rgba(139,92,246,0.6), 0 0 40px rgba(236,72,153,0.2);
         }
 
-        .msg-success { color: #059669; font-weight: 500; }
-        .msg-error   { color: #dc2626; font-weight: 500; }
+        #process-btn:active { transform: translateY(0) scale(0.99); }
 
+        #process-btn:disabled {
+            background: rgba(255,255,255,0.08);
+            color: rgba(255,255,255,0.25);
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #status { margin-top: 16px; font-size: 0.88rem; }
+
+        .msg-success { color: #6ee7b7; font-weight: 500; }
+        .msg-error   { color: #fca5a5; font-weight: 500; }
+
+        /* ── lock banner ── */
         #lock-banner {
-            background: linear-gradient(135deg, #fff7ed, #ffedd5);
-            border: 1.5px solid #fed7aa;
-            border-radius: 14px;
+            background: linear-gradient(135deg, rgba(251,146,60,0.15), rgba(249,115,22,0.1));
+            border: 1px solid rgba(251,146,60,0.3);
+            border-radius: 18px;
             padding: 20px 24px;
             margin-bottom: 20px;
             display: flex;
             align-items: center;
             gap: 16px;
+            backdrop-filter: blur(10px);
         }
 
-        #lock-banner .lock-icon {
-            font-size: 2rem;
-            flex-shrink: 0;
+        #lock-banner .lock-icon { font-size: 2.2rem; flex-shrink: 0; animation: spin-slow 4s linear infinite; }
+
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
         }
 
-        #lock-banner p:first-of-type {
-            font-size: 1rem;
-            font-weight: 600;
-            color: #c2410c;
-            margin-bottom: 3px;
-        }
+        #lock-banner p:first-of-type { font-size: 1rem; font-weight: 600; color: #fed7aa; margin-bottom: 3px; }
+        #lock-banner p:last-of-type  { font-size: 0.84rem; color: rgba(253,186,116,0.8); }
 
-        #lock-banner p:last-of-type {
-            font-size: 0.85rem;
-            color: #9a3412;
-        }
-
+        /* ── log window ── */
         #log-window {
-            border-radius: 14px;
+            border-radius: 18px;
             overflow: hidden;
             margin-bottom: 20px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
         }
 
         #log-titlebar {
-            background: linear-gradient(90deg, #1e1b4b, #312e81);
+            background: rgba(15,10,30,0.8);
+            backdrop-filter: blur(10px);
             padding: 10px 16px;
-            font-size: 0.78rem;
+            font-size: 0.75rem;
             color: #a5b4fc;
             font-family: monospace;
             display: flex;
             align-items: center;
             gap: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
         }
 
         #log-titlebar::before {
             content: "";
             display: inline-block;
-            width: 9px;
-            height: 9px;
+            width: 8px; height: 8px;
             background: #f97316;
             border-radius: 50%;
-            animation: blink 1.2s ease-in-out infinite;
-            box-shadow: 0 0 6px #f97316;
+            animation: blink 1s ease-in-out infinite;
+            box-shadow: 0 0 8px #f97316;
         }
 
         @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50%       { opacity: 0.15; }
+            0%, 100% { opacity: 1; box-shadow: 0 0 8px #f97316; }
+            50%       { opacity: 0.2; box-shadow: none; }
         }
 
         #log-output {
-            padding: 16px 18px;
-            height: 340px;
+            padding: 16px 20px;
+            height: 360px;
             overflow-y: auto;
             font-family: "Consolas", "Courier New", monospace;
-            font-size: 0.82rem;
-            line-height: 1.6;
+            font-size: 0.8rem;
+            line-height: 1.7;
             color: #c4b5fd;
-            background: #0f0a1e;
+            background: #07040f;
             white-space: pre-wrap;
             word-break: break-all;
         }
 
-        #result-section { }
+        #log-output::-webkit-scrollbar       { width: 6px; }
+        #log-output::-webkit-scrollbar-track  { background: transparent; }
+        #log-output::-webkit-scrollbar-thumb  { background: rgba(139,92,246,0.4); border-radius: 3px; }
 
+        /* ── results ── */
         #result-section h2 {
-            font-size: 0.72rem;
+            font-size: 0.7rem;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: #a78bfa;
-            margin-bottom: 16px;
+            letter-spacing: 0.12em;
+            color: #c4b5fd;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #result-section h2::before {
+            content: "";
+            display: inline-block;
+            width: 12px; height: 3px;
+            background: linear-gradient(90deg, var(--cyan), var(--purple));
+            border-radius: 2px;
         }
 
         .result-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: #faf5ff;
-            border: 1px solid #e9d5ff;
-            border-radius: 10px;
-            padding: 12px 16px;
+            background: rgba(34,211,238,0.05);
+            border: 1px solid rgba(34,211,238,0.15);
+            border-radius: 12px;
+            padding: 13px 18px;
             margin-bottom: 10px;
             font-size: 0.9rem;
-            transition: background 0.15s, transform 0.15s;
+            transition: all 0.2s ease;
+            cursor: pointer;
         }
 
-        .result-item:hover { background: #f3e8ff; transform: translateX(3px); }
+        .result-item:hover {
+            background: rgba(34,211,238,0.1);
+            border-color: rgba(34,211,238,0.35);
+            transform: translateX(4px);
+            box-shadow: 0 4px 16px rgba(34,211,238,0.1);
+        }
 
         .result-item a {
-            color: #7c3aed;
+            color: #67e8f9;
             text-decoration: none;
             font-weight: 600;
             display: flex;
@@ -294,27 +477,26 @@
             gap: 8px;
         }
 
-        .result-item a::before { content: "↓"; font-size: 1rem; }
+        .result-item a::before { content: "↓"; font-size: 1.1rem; opacity: 0.7; }
+        .result-item a:hover { color: #fff; }
 
-        .result-item a:hover { text-decoration: underline; }
-
-        .result-item .size { color: #a78bfa; font-size: 0.8rem; }
+        .result-item .size { color: rgba(103,232,249,0.5); font-size: 0.78rem; }
 
         .no-results {
-            color: #a78bfa;
+            color: var(--muted);
             font-size: 0.9rem;
             text-align: center;
-            padding: 16px 0;
+            padding: 20px 0;
         }
     </style>
 </head>
 <body>
 
 <header>
+    <div class="logo-badge">Forensic Tool</div>
     <h1>Kape Parser</h1>
     <p class="subtitle">
-        Ladda upp alla .zip-filer du samlat in med Kape.<br>
-        (Den här sidan är ett test)
+        Ladda upp ZIP-filer från KAPE, ange ärendenummer<br>och starta analysen.
     </p>
 </header>
 
@@ -329,7 +511,7 @@
     </div>
 </div>
 <div id="log-window">
-    <div id="log-titlebar">temporary_processing/run.log</div>
+    <div id="log-titlebar">Log</div>
     <div id="log-output"></div>
 </div>
 {% else %}
@@ -345,6 +527,11 @@
         <input type="file" id="file-input" multiple accept=".zip">
     </div>
     <div id="file-list"></div>
+    <div class="case-wrap">
+        <label for="case-input">Ärende</label>
+        <input type="text" id="case-input" placeholder="k12345-26" autocomplete="off" spellcheck="false">
+        <div class="case-hint" id="case-hint">Format: k + 3–10 siffror + bindestreck + 2 siffror (t.ex. k12345-26)</div>
+    </div>
     <button id="process-btn" disabled>Kör Kape</button>
     <div id="status"></div>
 </div>
@@ -352,7 +539,7 @@
 
 <div class="card">
     <div id="result-section">
-        <h2>Resultat</h2>
+        <h2>Resultat - filer här sparas i 30 dagar.</h2>
         {% if result_files %}
             {% for f in result_files %}
             <div class="result-item">
@@ -374,8 +561,37 @@
     const fileList   = document.getElementById("file-list");
     const processBtn = document.getElementById("process-btn");
     const status     = document.getElementById("status");
+    const caseInput  = document.getElementById("case-input");
+    const caseHint   = document.getElementById("case-hint");
 
+    const CASE_RE = /^[kK]\d{3,10}-\d{2}$/;
 
+    function caseValid() {
+        return CASE_RE.test(caseInput.value.trim());
+    }
+
+    function updateCaseUI() {
+        const val = caseInput.value.trim();
+        caseInput.classList.remove("valid", "invalid");
+        caseHint.classList.remove("error");
+        if (val === "") {
+            caseHint.textContent = "Format: k + 3–10 siffror + bindestreck + 2 siffror (t.ex. k12345-26)";
+        } else if (CASE_RE.test(val)) {
+            caseInput.classList.add("valid");
+            caseHint.textContent = "";
+        } else {
+            caseInput.classList.add("invalid");
+            caseHint.classList.add("error");
+            caseHint.textContent = "Ogiltigt format — exempel: k12345-26";
+        }
+        updateBtn();
+    }
+
+    function updateBtn() {
+        processBtn.disabled = selectedFiles.length === 0 || !caseValid();
+    }
+
+    caseInput.addEventListener("input", updateCaseUI);
 
     let selectedFiles = [];
 
@@ -401,7 +617,7 @@
             `;
             fileList.appendChild(item);
         });
-        processBtn.disabled = selectedFiles.length === 0;
+        updateBtn();
     }
 
     function addFiles(files) {
@@ -494,17 +710,21 @@
 
         if (saved.length > 0) {
             try {
-                const resp = await fetch("/process", { method: "POST" });
+                const resp = await fetch("/process", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ case: caseInput.value.trim() })
+                });
                 const res = await resp.json();
                 if (res.started) {
-                    status.innerHTML += `<p class="msg-success">Processing started, laddar om...</p>`;
+                    status.innerHTML += `<p class="msg-success">Kape startad, laddar om sidan...</p>`;
                     setTimeout(() => window.location.reload(), 1500);
                 } else {
-                    status.innerHTML += `<p class="msg-error">Could not start processing: ${res.error}</p>`;
+                    status.innerHTML += `<p class="msg-error">Kan inte starta: ${res.error}</p>`;
                     processBtn.disabled = false;
                 }
             } catch (err) {
-                status.innerHTML += `<p class="msg-error">Could not start processing: ${err.message}</p>`;
+                status.innerHTML += `<p class="msg-error">Kan inte starta: ${err.message}</p>`;
                 processBtn.disabled = false;
             }
         } else {

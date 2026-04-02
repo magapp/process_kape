@@ -1,8 +1,11 @@
 import os
+import re
 import subprocess
 import time
 from flask import Flask, render_template, request, jsonify, send_from_directory, Response, stream_with_context
 from werkzeug.utils import secure_filename
+
+CASE_RE = re.compile(r'^[kK]\d{3,10}-\d{2}$')
 
 app = Flask(__name__)
 
@@ -105,9 +108,14 @@ def process():
     if os.path.exists(LOCK_FILE):
         return jsonify({"error": "Already running"}), 409
 
+    data = request.get_json(silent=True) or {}
+    case = data.get("case", "").strip()
+    if not CASE_RE.match(case):
+        return jsonify({"error": "Ogiltigt ärendenummer"}), 400
+
     script = os.path.join(os.path.dirname(__file__), "bin", "process_kape.sh")
     subprocess.Popen(
-        ["bash", script, UPLOAD_DIR, "temporary_processing", RESULT_DIR],
+        ["bash", script, UPLOAD_DIR, "temporary_processing", RESULT_DIR, case],
         start_new_session=True,
     )
     return jsonify({"started": True})

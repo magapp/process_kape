@@ -145,7 +145,7 @@ def lookup_ip(db, ip):
         return "", "", "", ""
 
 
-def write_xlsx(path, header, rows):
+def write_xlsx(path, header, rows, ip_data=None):
     """Write rows to an Excel workbook at path.
 
     Creates a single sheet named "Timeline" with a bold header row.
@@ -153,9 +153,10 @@ def write_xlsx(path, header, rows):
     Column widths are auto-fitted (capped at 60 characters).
 
     Args:
-        path:   Destination file path.
-        header: List of column names.
-        rows:   List of (row_data, event_value) tuples.
+        path:    Destination file path.
+        header:  List of column names.
+        rows:    List of (row_data, event_value) tuples.
+        ip_data: Dict {ip: [country, city, ip_type, isp, count]} for the IP sheet.
     """
     wb = Workbook(write_only=True)
     ws = wb.create_sheet("Timeline")
@@ -191,7 +192,7 @@ def write_xlsx(path, header, rows):
     ws.auto_filter.ref = f"A1:{get_column_letter(len(header))}1"
 
     # --- Färger sheet ---
-    wc = wb.create_sheet("Färger")
+    wc = wb.create_sheet("Färger och förklaring")
     col_a = max(len("Event"),       max(len(s) for s, _, __ in EVENT_COLORS))
     col_b = max(len("Beskrivning"), max(len(d) for _, __, d in EVENT_COLORS))
     wc.column_dimensions["A"].width = col_a + 2
@@ -208,6 +209,32 @@ def write_xlsx(path, header, rows):
         c_event.fill = fill
         c_desc  = WriteOnlyCell(wc, value=description)
         wc.append([c_event, c_desc])
+
+    wc.append([])
+    wc.append(["I fliken IP-adresser finns en lista på publika IP-adresser som har hittats."])
+
+    # --- IP-adresser sheet ---
+    if ip_data:
+        wi = wb.create_sheet("IP-adresser")
+        ip_headers = ["IP address", "Nbr", "Country", "City", "Type", "ISP"]
+        wi.column_dimensions["A"].width = 18
+        wi.column_dimensions["B"].width = 6
+        wi.column_dimensions["C"].width = 20
+        wi.column_dimensions["D"].width = 20
+        wi.column_dimensions["E"].width = 18
+        wi.column_dimensions["F"].width = 30
+
+
+        bold = Font(bold=True)
+        header_cells = []
+        for val in ip_headers:
+            cell = WriteOnlyCell(wi, value=val)
+            cell.font = bold
+            header_cells.append(cell)
+        wi.append(header_cells)
+
+        for ip, (country, city, ip_type, isp, count) in sorted(ip_data.items()):
+            wi.append([ip, count, country, city, ip_type, isp])
 
     wb.save(path)
 
@@ -255,6 +282,7 @@ def main():
 
     xlsx_header = None
     xlsx_rows   = []
+    ip_data     = {}   # ip -> [country, city, ip_type, isp, count]
 
     for csv_file in sorted(process_dir.glob("*.csv")):
         if csv_file.name in skip_files:
@@ -296,6 +324,9 @@ def main():
                     country, city, ip_type, isp = lookup_ip(db_ctx, ip) if db_ctx else ("", "", "", "")
                     if ip:
                         print(f"  Parsed IP: {ip}")
+                        if ip not in ip_data:
+                            ip_data[ip] = [country, city, ip_type, isp, 0]
+                        ip_data[ip][4] += 1
 
                     full_row    = row + [ip, country, city, ip_type, isp]
                     event_value = row[event_idx] if event_idx < len(row) else ""
@@ -316,8 +347,8 @@ def main():
             writer.writerows(row for row, _ in xlsx_rows)
         print(f"Wrote {csv_path.name} ({len(xlsx_rows)} rows)")
 
-        write_xlsx(xlsx_path, xlsx_header, xlsx_rows)
-        print(f"Wrote {xlsx_path.name} ({len(xlsx_rows)} rows)")
+        write_xlsx(xlsx_path, xlsx_header, xlsx_rows, ip_data=ip_data if ip_data else None)
+        print(f"Wrote {xlsx_path.name} ({len(xlsx_rows)} rows, {len(ip_data)} unique IPs)")
 
 
 if __name__ == "__main__":
