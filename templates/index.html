@@ -543,7 +543,7 @@
         {% if result_files %}
             {% for f in result_files %}
             <div class="result-item">
-                <a href="/result/{{ f.name }}" download>{{ f.name }}</a>
+                <a href="{{ url_for('kape.download_result', filename=f.name) }}" download>{{ f.name }}</a>
                 <span class="size">{{ (f.size / 1024 / 1024) | round(1) }} MB</span>
             </div>
             {% endfor %}
@@ -684,7 +684,7 @@
                 resolve({ ok: false, name: file.name });
             });
 
-            xhr.open("POST", "/upload");
+            xhr.open("POST", "{{ url_for('kape.upload') }}");
             xhr.send(formData);
         });
     }
@@ -710,7 +710,7 @@
 
         if (saved.length > 0) {
             try {
-                const resp = await fetch("/process", {
+                const resp = await fetch("{{ url_for('kape.process') }}", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ case: caseInput.value.trim() })
@@ -737,7 +737,7 @@
 {% if locked %}
 <script>
     const logOutput = document.getElementById("log-output");
-    const es = new EventSource("/log/stream");
+    const es = new EventSource("{{ url_for('kape.log_stream') }}");
 
     es.onmessage = (e) => {
         const line = document.createElement("div");
