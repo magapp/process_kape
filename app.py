@@ -2,12 +2,13 @@ import os
 import re
 import subprocess
 import time
-from flask import Flask, render_template, request, jsonify, send_from_directory, Response, stream_with_context
+from flask import Flask, Blueprint, render_template, request, jsonify, send_from_directory, Response, stream_with_context
 from werkzeug.utils import secure_filename
 
 CASE_RE = re.compile(r'^[kK]\d{3,10}-\d{2}$')
 
 app = Flask(__name__)
+bp = Blueprint("kape", __name__, url_prefix="/parse_kape")
 
 UPLOAD_DIR = "downloaded"
 RESULT_DIR = "result"
@@ -42,19 +43,19 @@ def get_result_files():
     return entries
 
 
-@app.route("/")
+@bp.route("/")
 def index():
     lock_age = get_lock_info()
     result_files = get_result_files()
     return render_template("index.html", locked=lock_age is not None, lock_age=lock_age, result_files=result_files)
 
 
-@app.route("/result/<path:filename>")
+@bp.route("/result/<path:filename>")
 def download_result(filename):
     return send_from_directory(RESULT_DIR, filename, as_attachment=True)
 
 
-@app.route("/upload", methods=["POST"])
+@bp.route("/upload", methods=["POST"])
 def upload():
     files = request.files.getlist("files")
 
@@ -79,7 +80,7 @@ def upload():
 LOG_FILE = "temporary_processing/run.log"
 
 
-@app.route("/log/stream")
+@bp.route("/log/stream")
 def log_stream():
     def generate():
         with open(LOG_FILE, "a"):  # create if missing
@@ -103,7 +104,7 @@ def log_stream():
                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
-@app.route("/process", methods=["POST"])
+@bp.route("/process", methods=["POST"])
 def process():
     if os.path.exists(LOCK_FILE):
         return jsonify({"error": "Already running"}), 409
@@ -113,13 +114,17 @@ def process():
     if not CASE_RE.match(case):
         return jsonify({"error": "Ogiltigt ärendenummer"}), 400
 
-    script = os.path.join(os.path.dirname(__file__), "bin", "process_kape.sh")
+    app_dir = os.path.dirname(os.path.abspath(__file__))
+    script = os.path.join(app_dir, "bin", "process_kape.sh")
     subprocess.Popen(
         ["bash", script, UPLOAD_DIR, "temporary_processing", RESULT_DIR, case],
         start_new_session=True,
+        cwd=app_dir,
     )
     return jsonify({"started": True})
 
+
+app.register_blueprint(bp)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)
