@@ -8,7 +8,7 @@ from werkzeug.utils import secure_filename
 CASE_RE = re.compile(r'^[kK]\d{3,10}-\d{2}$')
 
 app = Flask(__name__)
-bp = Blueprint("kape", __name__, url_prefix="/parse_kape")
+bp = Blueprint("kape", __name__, url_prefix="/parse-kape")
 
 UPLOAD_DIR = "downloaded"
 RESULT_DIR = "result"
