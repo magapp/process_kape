@@ -3,10 +3,15 @@ services:
     build: .
     environment:
       TZ: Europe/Stockholm
+      DISPLAY: ":99"
+      WINEDEBUG: "-all"
+      WINEPREFIX: /root/.wine
+      WINEARCH: win64
     ports:
       - "5000:5000"
     volumes:
       - ./downloaded:/app/downloaded
       - ./temporary_processing:/app/temporary_processing
       - ./result:/app/result
+      - ~/.ip-db-full.mmb:/root/.ip-db-full.mmb:ro
     restart: unless-stopped
