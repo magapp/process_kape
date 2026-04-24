@@ -181,6 +181,10 @@ tail -f temporary_processing/run.log
 
 ```bash
 docker exec -it kape-parser bash
+or
+docker exec -it kape-parser /usr/bin/wine --version
+
+
 # inside the container:
 bash bin/process_kape.sh downloaded temporary_processing result
 ```

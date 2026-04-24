@@ -1,5 +1,6 @@
 services:
   kape-parser:
+    container_name: kape-parser
     build: .
     environment:
       TZ: Europe/Stockholm

@@ -33,6 +33,11 @@ SKIP_FILES = {"ip-addresses.csv", "ip-addresses-timestamp.csv", "ip-addresses.tx
 
 def is_public_ip(ip_str):
     try:
+        if ip_str.split(".")[3] == "0":
+            return False
+    except:
+        pass
+    try:
         return ipaddress.ip_address(ip_str).is_global
     except ValueError:
         return False
@@ -83,7 +88,11 @@ def main():
         print(f"Warning: IP database not found at {IP_DB_FILE}, skipping geo lookup")
         db_ctx = None
     else:
-        db_ctx = database.Reader(IP_DB_FILE)
+        try:
+            db_ctx = database.Reader(IP_DB_FILE)
+        except Exception as e:
+            print(f"Warning: Could not open IP database ({e}), skipping geo lookup")
+            db_ctx = None
 
     ip_data = {}          # ip -> [country, city, ip_type, isp, count]
     ip_timestamp_rows = []  # (timestamp, ip) for every occurrence

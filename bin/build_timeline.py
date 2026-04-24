@@ -97,6 +97,207 @@ def has_required_headers(header):
     return header[:len(REQUIRED_HEADERS)] == REQUIRED_HEADERS
 
 
+# ---------------------------------------------------------------------------
+# Raw KAPE file adapters
+# Each adapter maps raw EZTools columns to REQUIRED_HEADERS order.
+# ---------------------------------------------------------------------------
+
+def _colmap(header):
+    """Return a dict mapping column name (BOM-stripped) → index."""
+    return {name.lstrip("\ufeff"): i for i, name in enumerate(header)}
+
+
+def _g(row, cm, col, default=""):
+    """Get a cell value by column name; return default if missing."""
+    i = cm.get(col, -1)
+    return (row[i] if 0 <= i < len(row) else default) or default
+
+
+def _detect(required_cols):
+    """Return a detector function that checks required_cols are all present."""
+    def detect(header):
+        stripped = {c.lstrip("\ufeff") for c in header}
+        return all(c in stripped for c in required_cols)
+    return detect
+
+
+def _adapt_evtx(header, row):
+    """EvtxECmd_Output.csv → timeline row."""
+    cm = _colmap(header)
+    map_desc = _g(row, cm, "MapDescription")
+    event_id  = _g(row, cm, "EventId")
+    event = map_desc if map_desc else f"EventID {event_id}"
+    p1 = _g(row, cm, "PayloadData1")
+    p2 = _g(row, cm, "PayloadData2")
+    desc = " | ".join(p for p in [map_desc, p1, p2] if p) or event
+    remote_host = _g(row, cm, "RemoteHost")
+    remote_ip   = extract_ip(remote_host)
+    remote_hn   = remote_host if remote_host and not remote_ip else ""
+    return [
+        _g(row, cm, "TimeCreated"),
+        event,
+        desc,
+        _g(row, cm, "UserName"),
+        _g(row, cm, "Computer"),
+        "",
+        remote_hn,
+        remote_ip,
+        _g(row, cm, "Channel"),
+        p1,
+    ]
+
+
+def _adapt_mft(header, row):
+    """MFTECmd_$MFT_Output.csv → timeline row (files only, skip dirs)."""
+    cm = _colmap(header)
+    if _g(row, cm, "IsDirectory", "False").lower() in ("true", "1"):
+        return None  # skip directories
+    if _g(row, cm, "InUse", "True").lower() not in ("true", "1"):
+        return None  # skip deleted entries
+    parent = _g(row, cm, "ParentPath")
+    fname  = _g(row, cm, "FileName")
+    path   = f"{parent}\\{fname}" if parent else fname
+    return [
+        _g(row, cm, "LastModified0x10") or _g(row, cm, "Created0x10"),
+        "File System",
+        path,
+        "",
+        "",
+        "",
+        "",
+        "",
+        "MFT",
+        "",
+    ]
+
+
+def _adapt_usn(header, row):
+    """MFTECmd_$J_Output.csv (USN Journal) → timeline row."""
+    cm = _colmap(header)
+    parent = _g(row, cm, "ParentPath")
+    fname  = _g(row, cm, "Name")
+    path   = f"{parent}\\{fname}" if parent else fname
+    reasons = _g(row, cm, "UpdateReasons")
+    return [
+        _g(row, cm, "UpdateTimestamp"),
+        "USN Journal",
+        path,
+        "",
+        "",
+        "",
+        "",
+        "",
+        "USN Journal",
+        reasons,
+    ]
+
+
+def _adapt_leCmd(header, row):
+    """LECmd_Output.csv (LNK files) → timeline row."""
+    cm   = _colmap(header)
+    path = _g(row, cm, "LocalPath") or _g(row, cm, "TargetIDAbsolutePath")
+    ts   = _g(row, cm, "TargetModified") or _g(row, cm, "SourceModified")
+    src  = _g(row, cm, "SourceFile")
+    # Extract username from SourceFile path (e.g. C:\Users\USERNAME\...)
+    user = ""
+    m = re.search(r"[Uu]sers[/\\]([^/\\]+)", src)
+    if m:
+        user = m.group(1)
+    return [
+        ts,
+        "Link File",
+        path,
+        user,
+        _g(row, cm, "MachineID"),
+        "",
+        "",
+        "",
+        "LNK",
+        "",
+    ]
+
+
+def _adapt_autodest(header, row):
+    """AutomaticDestinations.csv (JumpLists) → timeline row."""
+    cm   = _colmap(header)
+    path = _g(row, cm, "Path") or _g(row, cm, "LocalPath") or _g(row, cm, "TargetIDAbsolutePath")
+    ts   = _g(row, cm, "LastModified") or _g(row, cm, "TargetModified")
+    src  = _g(row, cm, "SourceFile")
+    user = ""
+    m = re.search(r"[Uu]sers[/\\]([^/\\]+)", src)
+    if m:
+        user = m.group(1)
+    return [
+        ts,
+        "Link File",
+        path,
+        user,
+        _g(row, cm, "Hostname"),
+        "",
+        "",
+        "",
+        "AutomaticDestinations",
+        _g(row, cm, "AppIdDescription"),
+    ]
+
+
+def _adapt_appcompat(header, row):
+    """AppCompatCache (ShimCache) → timeline row."""
+    cm = _colmap(header)
+    return [
+        _g(row, cm, "LastModifiedTimeUTC"),
+        "AppCompatCache",
+        _g(row, cm, "Path"),
+        "",
+        "",
+        "",
+        "",
+        "",
+        "AppCompatCache",
+        _g(row, cm, "Executed"),
+    ]
+
+
+def _adapt_browsing(header, row):
+    """BrowsingHistory.csv → timeline row."""
+    cm    = _colmap(header)
+    url   = _g(row, cm, "URL")
+    title = _g(row, cm, "Title")
+    desc  = f"{url} ({title})" if title else url
+    return [
+        _g(row, cm, "Visit Time"),
+        "Browsing History",
+        desc,
+        _g(row, cm, "User Profile"),
+        "",
+        "",
+        "",
+        "",
+        _g(row, cm, "Web Browser"),
+        "",
+    ]
+
+
+# Ordered list of (detector, adapt_fn) — first match wins
+RAW_ADAPTERS = [
+    (_detect({"TimeCreated", "EventId", "Channel", "MapDescription"}), _adapt_evtx),
+    (_detect({"EntryNumber", "FileName", "Created0x10", "IsDirectory"}),  _adapt_mft),
+    (_detect({"UpdateTimestamp", "UpdateReasons", "EntryNumber"}),         _adapt_usn),
+    (_detect({"TargetIDAbsolutePath", "MachineID", "TrackerCreatedOn"}),  _adapt_leCmd),
+    (_detect({"AppId", "AppIdDescription", "LastUsedEntryNumber"}),       _adapt_autodest),
+    (_detect({"CacheEntryPosition", "LastModifiedTimeUTC", "Executed"}),  _adapt_appcompat),
+    (_detect({"URL", "Visit Time", "Web Browser"}),                        _adapt_browsing),
+]
+
+
+def get_raw_adapter(header):
+    """Return the first matching raw adapter function, or None."""
+    for detect, adapt in RAW_ADAPTERS:
+        if detect(header):
+            return adapt
+    return None
+
+
 def is_public_ip(ip_str):
     """Return True if ip_str is a globally routable (public) IP address."""
     try:
@@ -276,7 +477,11 @@ def main():
         print(f"Warning: IP database not found at {IP_DB_FILE}, skipping IP enrichment")
         db_ctx = None
     else:
-        db_ctx = database.Reader(IP_DB_FILE)
+        try:
+            db_ctx = database.Reader(IP_DB_FILE)
+        except Exception as e:
+            print(f"Warning: Could not open IP database ({e}), skipping IP enrichment")
+            db_ctx = None
 
     skip_files = {args.csv_output, args.xlsx_output}
 
@@ -298,24 +503,33 @@ def main():
                 except StopIteration:
                     continue
 
+                adapter = None
                 if not has_required_headers(header):
-                    print(f"Skipping {csv_file.name} (missing required headers)")
-                    continue
+                    adapter = get_raw_adapter(header)
+                    if adapter is None:
+                        print(f"Skipping {csv_file.name} (missing required headers)")
+                        continue
 
-                print(f"Adding {csv_file.name}...")
+                print(f"Adding {csv_file.name} {'(raw adapter)' if adapter else ''}...")
 
                 if xlsx_header is None:
-                    xlsx_header = header + ["Kape_IP", "Kape_Country", "Kape_City", "Kape_Type", "Kape_ISP"]
-
-                event_idx = header.index("Event") if "Event" in header else 1
+                    xlsx_header = REQUIRED_HEADERS + ["Kape_IP", "Kape_Country", "Kape_City", "Kape_Type", "Kape_ISP"]
 
                 for row in reader:
                     if not row:
                         continue
+
+                    if adapter:
+                        mapped = adapter(header, row)
+                        if mapped is None:
+                            continue
+                        row = mapped
+                    else:
+                        row = list(row)
+
                     ts = parse_timestamp(row[0])
                     if ts is None:
                         continue
-                    row = list(row)
                     row[0] = ts.strftime("%Y-%m-%d %H:%M:%S")
                     if ts.replace(tzinfo=None) < cutoff:
                         continue
@@ -323,13 +537,12 @@ def main():
                     ip = next((v for cell in row if (v := extract_ip(cell))), "") if db_ctx else ""
                     country, city, ip_type, isp = lookup_ip(db_ctx, ip) if db_ctx else ("", "", "", "")
                     if ip:
-                        print(f"  Parsed IP: {ip}")
                         if ip not in ip_data:
                             ip_data[ip] = [country, city, ip_type, isp, 0]
                         ip_data[ip][4] += 1
 
                     full_row    = row + [ip, country, city, ip_type, isp]
-                    event_value = row[event_idx] if event_idx < len(row) else ""
+                    event_value = row[1] if len(row) > 1 else ""
                     xlsx_rows.append((full_row, event_value))
 
         except csv.Error as e:
