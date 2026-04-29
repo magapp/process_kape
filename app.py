@@ -2,7 +2,7 @@ import os
 import re
 import subprocess
 import time
-from flask import Flask, Blueprint, render_template, request, jsonify, send_from_directory, Response, stream_with_context
+from flask import Flask, Blueprint, render_template, request, jsonify, send_from_directory, Response, stream_with_context, redirect, url_for
 from werkzeug.utils import secure_filename
 
 CASE_RE = re.compile(r'^[kK]\d{3,10}-\d{2}$')
@@ -125,6 +125,11 @@ def process():
 
 
 app.register_blueprint(bp)
+
+
+@app.route("/")
+def root_redirect():
+    return redirect(url_for("kape.index"))
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)
