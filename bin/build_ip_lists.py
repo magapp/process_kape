@@ -47,11 +47,21 @@ def looks_like_filepath(value):
     return bool(re.search(r'[/\\]', value))
 
 
+def ip_is_embedded(value, match):
+    """Check if the IP match is embedded inside a larger token (e.g. version string in a filename)."""
+    start, end = match.start(), match.end()
+    before = value[start - 1] if start > 0 else " "
+    after = value[end] if end < len(value) else " "
+    # A real IP should be preceded/followed by whitespace, comma, quotes, or start/end of string
+    clean_boundary = {" ", ",", "\t", '"', "'", "(", ")", "[", "]", ""}
+    return before not in clean_boundary and after not in clean_boundary
+
+
 def extract_ip(value):
     if looks_like_filepath(value) or "version" in value.lower() or "oid" in value.lower():
         return ""
     for m in IPV4_RE.finditer(value):
-        if all(0 <= int(g) <= 255 for g in m.groups()) and is_public_ip(m.group(0)):
+        if all(0 <= int(g) <= 255 for g in m.groups()) and is_public_ip(m.group(0)) and not ip_is_embedded(value, m):
             return m.group(0)
     for m in IPV6_RE.finditer(value):
         if is_public_ip(m.group(0)):

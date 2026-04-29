@@ -161,11 +161,11 @@ do
     # subdir empty = always run with input_dir as -in
     MODULES=(
       "EventLogs:eventlogparser.ps1:-hostname"
-      "ProgramExecution:ProgramExecutionparser.ps1:-ComputerName"
+      "ProgramExecution:programExecutionParser.ps1:-ComputerName"
       "FileFolderAccess:filefolderAccess.ps1:-ComputerName"
       "FileSystem:filesystem.ps1:-ComputerName"
       "BrowsingHistory:Browsinghistory.ps1:-ComputerName"
-      "Registry:RegistryParser.ps1:-ComputerName"
+      "Registry:registryparser.ps1:-ComputerName"
       ":ConsoleHost.ps1:-ComputerName"
       ":DefenderLogs.ps1:-ComputerName"
     )

@@ -23,7 +23,7 @@ RUN dpkg --add-architecture i386 \
         ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Initialise Wine prefix, install wine-mono (.NET support for KAPE/EZParser tools)
+# Initialise Wine prefix, install wine-mono (.NET Framework support for KAPE/EZParser tools)
 # and PowerShell 7 (real binary, replaces wine-mono's stub powershell.exe)
 RUN Xvfb :99 -screen 0 1024x768x16 & \
        sleep 2 \
