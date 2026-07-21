@@ -50,26 +50,40 @@ def looks_like_filepath(value):
 def ip_is_embedded(value, match):
     """Check if the IP match is embedded inside a larger token (e.g. version string in a filename)."""
     start, end = match.start(), match.end()
-    before = value[start - 1] if start > 0 else None
-    after = value[end] if end < len(value) else None
+    before = value[start - 1] if start > 0 else " "
+    after = value[end] if end < len(value) else " "
     # A dot immediately adjacent means this is part of a longer dotted sequence (version number etc.)
     if before == "." or after == ".":
         return True
-    # A real IP must be surrounded by whitespace, punctuation, or string edges on BOTH sides
-    clean_boundary = {" ", ",", "\t", '"', "'", "(", ")", "[", "]", "/", ":"}
-    if before is not None and before not in clean_boundary:
-        return True
-    if after is not None and after not in clean_boundary:
-        return True
-    return False
+    # Both sides must be non-clean for us to consider it embedded (original AND logic)
+    clean_boundary = {" ", ",", "\t", '"', "'", "(", ")", "[", "]", ""}
+    return before not in clean_boundary and after not in clean_boundary
+
+
+def _looks_like_version(ip_str, cell_value):
+    """Return True if the entire cell is this IP and it looks like a software version number.
+
+    Heuristic: if both the first and second octet are single-digit (≤ 9), the dotted-quad
+    is almost certainly a version string (e.g. 1.3.229.3, 1.4.8.1) rather than a routable IP.
+    Real public IPs with a first octet ≤ 9 are rare in practice and even rarer as bare
+    standalone values in filesystem metadata.
+    """
+    if cell_value.strip() != ip_str:
+        return False
+    octets = ip_str.split(".")
+    return int(octets[0]) <= 9 and int(octets[1]) <= 9
 
 
 def extract_ip(value):
     if looks_like_filepath(value) or "version" in value.lower() or "oid" in value.lower():
         return ""
     for m in IPV4_RE.finditer(value):
-        if all(0 <= int(g) <= 255 for g in m.groups()) and is_public_ip(m.group(0)) and not ip_is_embedded(value, m):
-            return m.group(0)
+        ip = m.group(0)
+        if (all(0 <= int(g) <= 255 for g in m.groups())
+                and is_public_ip(ip)
+                and not ip_is_embedded(value, m)
+                and not _looks_like_version(ip, value)):
+            return ip
     for m in IPV6_RE.finditer(value):
         if is_public_ip(m.group(0)):
             return m.group(0)
