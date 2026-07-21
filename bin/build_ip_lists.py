@@ -50,11 +50,18 @@ def looks_like_filepath(value):
 def ip_is_embedded(value, match):
     """Check if the IP match is embedded inside a larger token (e.g. version string in a filename)."""
     start, end = match.start(), match.end()
-    before = value[start - 1] if start > 0 else " "
-    after = value[end] if end < len(value) else " "
-    # A real IP should be preceded/followed by whitespace, comma, quotes, or start/end of string
-    clean_boundary = {" ", ",", "\t", '"', "'", "(", ")", "[", "]", ""}
-    return before not in clean_boundary and after not in clean_boundary
+    before = value[start - 1] if start > 0 else None
+    after = value[end] if end < len(value) else None
+    # A dot immediately adjacent means this is part of a longer dotted sequence (version number etc.)
+    if before == "." or after == ".":
+        return True
+    # A real IP must be surrounded by whitespace, punctuation, or string edges on BOTH sides
+    clean_boundary = {" ", ",", "\t", '"', "'", "(", ")", "[", "]", "/", ":"}
+    if before is not None and before not in clean_boundary:
+        return True
+    if after is not None and after not in clean_boundary:
+        return True
+    return False
 
 
 def extract_ip(value):

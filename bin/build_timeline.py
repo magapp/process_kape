@@ -346,6 +346,16 @@ def lookup_ip(db, ip):
         return "", "", "", ""
 
 
+_ILLEGAL_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
+
+
+def _sanitize(value):
+    """Strip illegal Excel control characters from string values."""
+    if isinstance(value, str):
+        return _ILLEGAL_CHARS_RE.sub("", value)
+    return value
+
+
 def write_xlsx(path, header, rows, ip_data=None):
     """Write rows to an Excel workbook at path.
 
@@ -380,12 +390,12 @@ def write_xlsx(path, header, rows, ip_data=None):
         if fill:
             out_cells = []
             for val in row_data:
-                cell = WriteOnlyCell(ws, value=val)
+                cell = WriteOnlyCell(ws, value=_sanitize(val))
                 cell.fill = fill
                 out_cells.append(cell)
             ws.append(out_cells)
         else:
-            ws.append(row_data)
+            ws.append([_sanitize(v) for v in row_data])
 
     for col_idx, width in enumerate(col_widths, 1):
         ws.column_dimensions[get_column_letter(col_idx)].width = width + 2
