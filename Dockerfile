@@ -60,7 +60,8 @@ RUN python -m venv /app/bin/env \
 COPY . .
 
 RUN mkdir -p downloaded result temporary_processing \
-    && chmod +x /app/bin/build_timeline.py /app/bin/build_ip_lists.py /app/bin/merge_csv.py
+    && chmod +x /app/bin/build_timeline.py /app/bin/build_ip_lists.py /app/bin/merge_csv.py \
+    && touch /root/.ip-db-full.mmb
 
 EXPOSE 5000
 
