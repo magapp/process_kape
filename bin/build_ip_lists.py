@@ -60,16 +60,12 @@ def ip_is_embedded(value, match):
     return before not in clean_boundary and after not in clean_boundary
 
 
-def _looks_like_version(ip_str, cell_value):
-    """Return True if the entire cell is this IP and it looks like a software version number.
+def _looks_like_version(ip_str):
+    """Return True if the dotted-quad looks like a software version number rather than a routable IP.
 
-    Heuristic: if both the first and second octet are single-digit (≤ 9), the dotted-quad
-    is almost certainly a version string (e.g. 1.3.229.3, 1.4.8.1) rather than a routable IP.
-    Real public IPs with a first octet ≤ 9 are rare in practice and even rarer as bare
-    standalone values in filesystem metadata.
+    If both the first and second octet are single-digit (≤ 9), it is almost certainly a version
+    string (e.g. 1.3.229.3, 1.4.8.1) rather than a real public IP address.
     """
-    if cell_value.strip() != ip_str:
-        return False
     octets = ip_str.split(".")
     return int(octets[0]) <= 9 and int(octets[1]) <= 9
 
@@ -79,11 +75,18 @@ def extract_ip(value):
         return ""
     for m in IPV4_RE.finditer(value):
         ip = m.group(0)
-        if (all(0 <= int(g) <= 255 for g in m.groups())
-                and is_public_ip(ip)
-                and not ip_is_embedded(value, m)
-                and not _looks_like_version(ip, value)):
-            return ip
+        if not all(0 <= int(g) <= 255 for g in m.groups()):
+            continue
+        if not is_public_ip(ip):
+            print(f"  Ignoring {ip}, not a public IP")
+            continue
+        if ip_is_embedded(value, m):
+            print(f"  Ignoring {ip}, embedded in larger token")
+            continue
+        if _looks_like_version(ip):
+            print(f"  Ignoring {ip}, looks like a version number")
+            continue
+        return ip
     for m in IPV6_RE.finditer(value):
         if is_public_ip(m.group(0)):
             return m.group(0)
