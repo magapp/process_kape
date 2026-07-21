@@ -52,26 +52,35 @@ def ip_is_embedded(value, match):
     start, end = match.start(), match.end()
     before = value[start - 1] if start > 0 else " "
     after = value[end] if end < len(value) else " "
-    # A dot immediately adjacent means this is part of a longer dotted sequence (version number etc.)
+    # A dot immediately adjacent means this is part of a longer dotted sequence (version/domain)
     if before == "." or after == ".":
         return True
-    # Both sides must be non-clean for us to consider it embedded (original AND logic)
-    clean_boundary = {" ", ",", "\t", '"', "'", "(", ")", "[", "]", ""}
+    # Both sides must be non-clean to consider it embedded (AND logic).
+    # ":" covers port suffixes (1.2.3.4:80); ">" covers HTML-encoded arrows (&gt;) in event payloads.
+    clean_boundary = {" ", ",", "\t", '"', "'", "(", ")", "[", "]", "", ":", ">", "<"}
     return before not in clean_boundary and after not in clean_boundary
 
 
-def _looks_like_version(ip_str):
-    """Return True if the dotted-quad looks like a software version number rather than a routable IP.
+def _looks_like_version(ip_str, cell_value):
+    """Return True if the dotted-quad looks like a version number rather than a routable IP.
 
-    If both the first and second octet are single-digit (≤ 9), it is almost certainly a version
-    string (e.g. 1.3.229.3, 1.4.8.1) rather than a real public IP address.
+    Two heuristics:
+    1. Any non-last octet is 0 → network/version address (e.g. 1.28.0.1, 2.0.0.31).
+    2. The entire cell IS this IP, and both first and second octets are ≤ 9 → standalone version
+       string in filesystem metadata (e.g. "1.3.229.3", "1.4.8.1" as MFT filenames).
+       This rule is only applied when standalone so that real IPs like 8.8.8.8 in event log
+       descriptions are not incorrectly filtered.
     """
     octets = ip_str.split(".")
-    return int(octets[0]) <= 9 and int(octets[1]) <= 9
+    if any(o == "0" for o in octets[:3]):
+        return True
+    if cell_value.strip() == ip_str and int(octets[0]) <= 9 and int(octets[1]) <= 9:
+        return True
+    return False
 
 
 def extract_ip(value):
-    if looks_like_filepath(value) or "version" in value.lower() or "oid" in value.lower():
+    if looks_like_filepath(value) or "version" in value.lower() or "revision" in value.lower() or "oid" in value.lower():
         return ""
     for m in IPV4_RE.finditer(value):
         ip = m.group(0)
@@ -83,7 +92,7 @@ def extract_ip(value):
         if ip_is_embedded(value, m):
             print(f"  Ignoring {ip}, embedded in larger token")
             continue
-        if _looks_like_version(ip):
+        if _looks_like_version(ip, value):
             print(f"  Ignoring {ip}, looks like a version number")
             continue
         return ip
