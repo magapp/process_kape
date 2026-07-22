@@ -301,6 +301,11 @@ def get_raw_adapter(header):
 def is_public_ip(ip_str):
     """Return True if ip_str is a globally routable (public) IP address."""
     try:
+        if ip_str.split(".")[3] == "0":
+            return False
+    except Exception:
+        pass
+    try:
         return ipaddress.ip_address(ip_str).is_global
     except ValueError:
         return False
@@ -311,16 +316,42 @@ def looks_like_filepath(value):
     return bool(re.search(r'[/\\]', value))
 
 
-def extract_ip(value):
-    """Extract the first public IPv4 or IPv6 address from value, or return ''.
+def ip_is_embedded(value, match):
+    """Return True if the IP match is embedded inside a larger token."""
+    start, end = match.start(), match.end()
+    before = value[start - 1] if start > 0 else " "
+    after = value[end] if end < len(value) else " "
+    if before == "." or after == ".":
+        return True
+    clean_boundary = {" ", ",", "\t", '"', "'", "(", ")", "[", "]", "", ":", ">", "<"}
+    return before not in clean_boundary and after not in clean_boundary
 
-    Skips values that look like file paths, contain the word 'version'.
-    """
-    if looks_like_filepath(value) or "version" in value.lower():
+
+def _looks_like_version(ip_str, cell_value):
+    """Return True if the dotted-quad looks like a version number rather than a routable IP."""
+    octets = ip_str.split(".")
+    if any(o == "0" for o in octets[:3]):
+        return True
+    if cell_value.strip() == ip_str and int(octets[0]) <= 9 and int(octets[1]) <= 9:
+        return True
+    return False
+
+
+def extract_ip(value):
+    """Extract the first public IPv4 or IPv6 address from value, or return ''."""
+    if looks_like_filepath(value) or "version" in value.lower() or "revision" in value.lower() or "oid" in value.lower():
         return ""
     for m in IPV4_RE.finditer(value):
-        if all(0 <= int(g) <= 255 for g in m.groups()) and is_public_ip(m.group(0)):
-            return m.group(0)
+        ip = m.group(0)
+        if not all(0 <= int(g) <= 255 for g in m.groups()):
+            continue
+        if not is_public_ip(ip):
+            continue
+        if ip_is_embedded(value, m):
+            continue
+        if _looks_like_version(ip, value):
+            continue
+        return ip
     for m in IPV6_RE.finditer(value):
         if is_public_ip(m.group(0)):
             return m.group(0)
