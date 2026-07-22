@@ -592,6 +592,24 @@ def main():
     if db_ctx:
         db_ctx.close()
 
+    # Prefer the comprehensive IP list produced by build_ip_lists.py (which scans all raw
+    # CSV files, not just timeline rows) if it exists in the process directory.
+    ip_addresses_csv = process_dir / "ip-addresses.csv"
+    if ip_addresses_csv.exists():
+        ip_data = {}
+        with open(ip_addresses_csv, newline="", encoding="utf-8-sig") as f:
+            for row in csv.DictReader(f):
+                ip = row.get("IPAddress", "").strip()
+                if ip:
+                    ip_data[ip] = [
+                        row.get("Country", ""),
+                        row.get("City", ""),
+                        row.get("Type", ""),
+                        row.get("ISP", ""),
+                        int(row.get("Nbr occurance", 0) or 0),
+                    ]
+        print(f"Loaded {len(ip_data)} IPs from {ip_addresses_csv.name} for Excel IP tab")
+
     if xlsx_header:
         xlsx_rows.sort(key=lambda item: item[0][0])
 

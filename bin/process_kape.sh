@@ -199,12 +199,12 @@ echo "*** Merging CSV files ..."
 run_cmd bin/merge_csv.py --process-dir $process_directory
 
 echo -e ""
-echo "*** Building timeline ..."
-run_cmd bin/build_timeline.py --process-dir $process_directory
-
-echo -e ""
 echo "*** Building IP lists ..."
 run_cmd bin/build_ip_lists.py --process-dir $process_directory
+
+echo -e ""
+echo "*** Building timeline ..."
+run_cmd bin/build_timeline.py --process-dir $process_directory
 
 echo -e ""
 echo "*** Collecting relevant data and copy to $output_directory/zip"
